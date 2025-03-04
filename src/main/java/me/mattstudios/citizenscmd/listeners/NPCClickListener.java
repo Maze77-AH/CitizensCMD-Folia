@@ -21,12 +21,12 @@ package me.mattstudios.citizenscmd.listeners;
 import static me.mattstudios.citizenscmd.utility.Util.LEGACY;
 import static me.mattstudios.citizenscmd.utility.Util.MINIMESSAGE;
 import static me.mattstudios.citizenscmd.utility.Util.getFormattedTime;
-import static org.bukkit.Bukkit.getScheduler;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -52,6 +52,7 @@ import net.citizensnpcs.api.event.NPCRightClickEvent;
 import net.citizensnpcs.api.npc.NPC;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
+import java.util.concurrent.TimeUnit;
 
 public class NPCClickListener implements Listener {
 
@@ -274,85 +275,93 @@ public class NPCClickListener implements Listener {
             }
 
             final int finalI = i;
+
+            long ticks = (long) delay * 20L;
+
             switch (permissions.get(i).toLowerCase()) {
                 case "console":
-                    getScheduler().runTaskLater(plugin, () -> plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), commands.get(finalI)), (int) delay * 20);
+                    Bukkit.getGlobalRegionScheduler().runDelayed(plugin, scheduledTask -> {
+                        plugin.getServer().dispatchCommand(
+                            plugin.getServer().getConsoleSender(),
+                            commands.get(finalI)
+                        );
+                    }, ticks);
                     break;
-
+            
                 case "none":
-                    getScheduler().runTaskLater(plugin, () -> player.chat("/" + commands.get(finalI)), (int) delay * 20L);
+                    Bukkit.getGlobalRegionScheduler().runDelayed(plugin, scheduledTask -> {
+                        player.chat("/" + commands.get(finalI));
+                    }, ticks);
                     break;
-
+            
                 case "server":
-                    getScheduler().runTaskLater(plugin, () -> Util.changeServer(plugin, player, commands.get(finalI)), (int) delay * 20L);
+                    Bukkit.getGlobalRegionScheduler().runDelayed(plugin, scheduledTask -> {
+                        Util.changeServer(plugin, player, commands.get(finalI));
+                    }, ticks);
                     break;
-
+            
                 case "message":
-                    getScheduler().runTaskLater(plugin, () -> {
-                        final String finalMessage = commands.get(finalI)
-                                .replace("{display}", plugin.getLang().getUncoloredMessage(Messages.MESSAGE_DISPLAY))
-                                .replace("{name}", npc.getFullName());
-
-                        final Audience audience = plugin.getAudiences().player(player);
-
+                    Bukkit.getGlobalRegionScheduler().runDelayed(plugin, scheduledTask -> {
+                        String finalMessage = commands.get(finalI)
+                            .replace("{display}", plugin.getLang().getUncoloredMessage(Messages.MESSAGE_DISPLAY))
+                            .replace("{name}", npc.getFullName());
+            
+                        Audience audience = plugin.getAudiences().player(player);
+            
                         if (plugin.getSettings().getProperty(Settings.MINIMESSAGE)) {
                             audience.sendMessage(MINIMESSAGE.deserialize(finalMessage));
-                            return;
+                        } else {
+                            audience.sendMessage(LEGACY.deserialize(finalMessage));
                         }
-
-                        audience.sendMessage(LEGACY.deserialize(finalMessage));
-                    }, (int) delay * 20L);
+                    }, ticks);
                     break;
-
+            
                 case "sound":
-                    getScheduler().runTaskLater(plugin, () -> {
+                    Bukkit.getGlobalRegionScheduler().runDelayed(plugin, scheduledTask -> {
                         String sound = commands.get(finalI);
-                        final Matcher matcher = SOUND_PATTERN.matcher(sound);
-
+                        Matcher matcher = SOUND_PATTERN.matcher(sound);
+            
                         float volume = 1f;
-                        final float pitch = 1f;
-
+                        float pitch = 1f;
+            
                         if (matcher.find()) {
                             sound = matcher.group("sound");
-
-                            final String volumeString = matcher.group("volume");
-                            final String pitchString = matcher.group("pitch");
-
+            
+                            String volumeString = matcher.group("volume");
+                            String pitchString = matcher.group("pitch");
+            
                             if (volumeString != null) {
-                                final Float nullableVolume = Floats.tryParse(volumeString);
+                                Float nullableVolume = Floats.tryParse(volumeString);
                                 if (nullableVolume != null) {
                                     volume = nullableVolume;
                                 }
                             }
-
                             if (pitchString != null) {
-                                final Float nullablePitch = Floats.tryParse(pitchString);
+                                Float nullablePitch = Floats.tryParse(pitchString);
                                 if (nullablePitch != null) {
-                                    volume = nullablePitch;
+                                    pitch = nullablePitch;
                                 }
                             }
                         }
-
+            
                         if (!Util.soundExists(sound)) {
                             player.playSound(player.getLocation(), sound, volume, pitch);
                             return;
                         }
-
-                        final Sound bukkitSound = Sound.valueOf(sound);
-
+            
+                        Sound bukkitSound = Sound.valueOf(sound);
                         player.playSound(player.getLocation(), bukkitSound, volume, pitch);
-                    }, (int) delay * 20L);
+                    }, ticks);
                     break;
-
+            
                 default:
-                    getScheduler().runTaskLater(plugin, () -> {
+                    Bukkit.getGlobalRegionScheduler().runDelayed(plugin, scheduledTask -> {
                         plugin.getPermissionsManager().setPermission(player, permissions.get(finalI));
                         player.chat("/" + commands.get(finalI));
                         plugin.getPermissionsManager().unsetPermission(player, permissions.get(finalI));
-                    }, (int) delay * 20L);
+                    }, ticks);
                     break;
-            }
-        }
+            }        
+        }    
     }
-
 }
