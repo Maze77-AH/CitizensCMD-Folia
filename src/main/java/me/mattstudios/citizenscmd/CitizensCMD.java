@@ -26,6 +26,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -43,6 +44,7 @@ import dev.triumphteam.cmd.bukkit.BukkitCommandManager;
 import dev.triumphteam.cmd.bukkit.message.BukkitMessageKey;
 import dev.triumphteam.cmd.core.message.MessageKey;
 import dev.triumphteam.cmd.core.suggestion.SuggestionKey;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import me.mattstudios.citizenscmd.api.CitizensCMDAPI;
 import me.mattstudios.citizenscmd.commands.AddCommand;
 import me.mattstudios.citizenscmd.commands.CooldownCommand;
@@ -165,8 +167,16 @@ public final class CitizensCMD extends JavaPlugin {
         Util.setUpMetrics(metrics, settings);
 
         // Tasks
-        new UpdateScheduler(this).runTaskTimerAsynchronously(this, 72000L, 72000L);
-        new CooldownScheduler(this).runTaskTimerAsynchronously(this, 36000L, 36000L);
+        UpdateScheduler updateScheduler = new UpdateScheduler(this);
+        CooldownScheduler cooldownScheduler = new CooldownScheduler(this);
+
+        Bukkit.getAsyncScheduler().runAtFixedRate(this, (ScheduledTask task) -> {
+            updateScheduler.run();
+        }, 72000L, 72000L, TimeUnit.MILLISECONDS);
+
+        Bukkit.getAsyncScheduler().runAtFixedRate(this, (ScheduledTask task) -> {
+            cooldownScheduler.run();
+        }, 36000L, 36000L, TimeUnit.MILLISECONDS);  
 
         // Check for updates
         if (settings.getProperty(Settings.CHECK_UPDATES)) {

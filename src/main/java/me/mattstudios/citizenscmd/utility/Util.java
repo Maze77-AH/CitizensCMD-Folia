@@ -314,8 +314,8 @@ public class Util {
     }
 
     public static boolean soundExists(String soundName) {
-        for (final Sound sound : Sound.values()) {
-            if (sound.name().equalsIgnoreCase(soundName)) {
+        for (final Sound sound : Sound.class.getEnumConstants()) {
+            if (sound.toString().equalsIgnoreCase(soundName)) {
                 return true;
             }
         }
